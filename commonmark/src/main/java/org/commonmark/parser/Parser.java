@@ -27,17 +27,18 @@ public class Parser {
 
     private final List<BlockParserFactory> blockParserFactories;
     private final List<DelimiterProcessor> delimiterProcessors;
-    private final InlineParserFactory inlineParserFactory;
+    private final List<InlineParserFactory> inlineParserFactories;
     private final List<PostProcessor> postProcessors;
 
     private Parser(Builder builder) {
         this.blockParserFactories = DocumentParser.calculateBlockParserFactories(builder.blockParserFactories, builder.enabledBlockTypes);
-        this.inlineParserFactory = builder.inlineParserFactory;
+        this.inlineParserFactories = builder.inlineParserFactories;
+        this.inlineParserFactories.add(new InlineParserImpl.Factory() );
         this.postProcessors = builder.postProcessors;
         this.delimiterProcessors = builder.delimiterProcessors;
 
         // Try to construct an inline parser. This might raise exceptions in case of invalid configuration.
-        getInlineParser();
+        getInlineParsers();
     }
 
     /**
@@ -58,7 +59,7 @@ public class Parser {
      * @return the root node
      */
     public Node parse(String input) {
-        InlineParser inlineParser = getInlineParser();
+        InlineParser inlineParser = getInlineParsers().get(0);
         DocumentParser documentParser = new DocumentParser(blockParserFactories, inlineParser);
         Node document = documentParser.parse(input);
         return postProcess(document);
@@ -83,20 +84,24 @@ public class Parser {
      * @throws IOException when reading throws an exception
      */
     public Node parseReader(Reader input) throws IOException {
-        InlineParser inlineParser = getInlineParser();
+        InlineParser inlineParser =  getInlineParsers().get(0);
         DocumentParser documentParser = new DocumentParser(blockParserFactories, inlineParser);
         Node document = documentParser.parse(input);
         return postProcess(document);
     }
 
-    private InlineParser getInlineParser() {
-        if (this.inlineParserFactory == null) {
-            return new InlineParserImpl(delimiterProcessors);
-        } else {
+
+    
+    private List<InlineParser> getInlineParsers() {
+        List<InlineParser> parsers = new ArrayList<>();
+        for (InlineParserFactory factory : inlineParserFactories ) {
             CustomInlineParserContext inlineParserContext = new CustomInlineParserContext(delimiterProcessors);
-            return this.inlineParserFactory.create(inlineParserContext);
-        }
+            parsers.add(factory.create(inlineParserContext));
+        }  
+        return parsers;        
     }
+    
+   
 
     private Node postProcess(Node document) {
         for (PostProcessor postProcessor : postProcessors) {
@@ -125,9 +130,10 @@ public class Parser {
     public static class Builder {
         private final List<BlockParserFactory> blockParserFactories = new ArrayList<>();
         private final List<DelimiterProcessor> delimiterProcessors = new ArrayList<>();
+        private final List<InlineParserFactory> inlineParserFactories = new ArrayList<>();
         private final List<PostProcessor> postProcessors = new ArrayList<>();
         private Set<Class<? extends Block>> enabledBlockTypes = DocumentParser.getDefaultBlockParserTypes();
-        private InlineParserFactory inlineParserFactory = null;
+
 
         /**
          * @return the configured {@link Parser}
@@ -237,7 +243,7 @@ public class Parser {
          * @return {@code this}
          */
         public Builder inlineParserFactory(InlineParserFactory inlineParserFactory) {
-            this.inlineParserFactory = inlineParserFactory;
+            this.inlineParserFactories.add(inlineParserFactory);
             return this;
         }
     }
