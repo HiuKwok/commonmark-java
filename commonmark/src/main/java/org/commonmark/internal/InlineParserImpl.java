@@ -6,7 +6,9 @@ import org.commonmark.internal.util.Escaping;
 import org.commonmark.internal.util.Html5Entities;
 import org.commonmark.internal.util.Parsing;
 import org.commonmark.node.*;
+import org.commonmark.parser.AbstractInlineParserFactory;
 import org.commonmark.parser.InlineParser;
+import org.commonmark.parser.InlineParserContext;
 import org.commonmark.parser.delimiter.DelimiterProcessor;
 
 import java.util.*;
@@ -1034,4 +1036,14 @@ public class InlineParserImpl implements InlineParser, ReferenceParser {
             this.canClose = canClose;
         }
     }
+
+    public static class Factory extends AbstractInlineParserFactory {
+
+        @Override
+        public InlineParser create(InlineParserContext inlineParserContext) {
+            return new InlineParserImpl(inlineParserContext.getCustomDelimiterProcessors());
+        }
+        
+    }
+
 }
