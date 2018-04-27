@@ -1,19 +1,32 @@
 package org.commonmark.internal;
 
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.commonmark.internal.inline.AsteriskDelimiterProcessor;
 import org.commonmark.internal.inline.UnderscoreDelimiterProcessor;
 import org.commonmark.internal.util.Escaping;
 import org.commonmark.internal.util.Html5Entities;
 import org.commonmark.internal.util.Parsing;
-import org.commonmark.node.*;
+import org.commonmark.node.Code;
+import org.commonmark.node.HardLineBreak;
+import org.commonmark.node.HtmlInline;
+import org.commonmark.node.Image;
+import org.commonmark.node.Link;
+import org.commonmark.node.Node;
+import org.commonmark.node.SoftLineBreak;
+import org.commonmark.node.Text;
 import org.commonmark.parser.AbstractInlineParserFactory;
+import org.commonmark.parser.InlineContinue;
 import org.commonmark.parser.InlineParser;
 import org.commonmark.parser.InlineParserContext;
 import org.commonmark.parser.delimiter.DelimiterProcessor;
-
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class InlineParserImpl implements InlineParser, ReferenceParser {
 
@@ -80,6 +93,9 @@ public class InlineParserImpl implements InlineParser, ReferenceParser {
 
     private String input;
     private int index;
+    
+    
+    private NewLineBreakParser newlineParser = new NewLineBreakParser();  
 
     /**
      * Top delimiter (emphasis, strong emphasis or custom emphasis). (Brackets are on a separate stack, different
@@ -274,6 +290,8 @@ public class InlineParserImpl implements InlineParser, ReferenceParser {
      * On failure, return false.
      */
     private boolean parseInline() {
+
+        
         boolean res;
         char c = peek();
         if (c == '\0') {
@@ -281,7 +299,11 @@ public class InlineParserImpl implements InlineParser, ReferenceParser {
         }
         switch (c) {
             case '\n':
-                res = parseNewline();
+                //First parse inline
+                InlineContinue con = newlineParser.parse(input, index, block);
+                index = con.getIndex();
+                res = true;
+                
                 break;
             case '\\':
                 res = parseBackslash();
